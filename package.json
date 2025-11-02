@@ -1,0 +1,7 @@
+{
+  "name": "jn-homeopathy-patient-app-v3",
+  "version": "1.0.0",
+  "description": "JN Homeopathy Clinic local app v3",
+  "main": "index.html",
+  "license": "MIT"
+}

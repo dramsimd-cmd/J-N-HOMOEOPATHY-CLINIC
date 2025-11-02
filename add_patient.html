@@ -1,0 +1,140 @@
+
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Add / Edit Patient</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<header><h1>J N HOMEOPATHY CLINIC — Add / Edit Patient</h1></header>
+<main class="container">
+  <a class="link" href="index.html">⬅ Back to Menu</a>
+  <form id="patientForm">
+    <h2>1. Preliminary Data</h2>
+    <div class="field-row">
+      <div><label>Date</label><input type="date" id="date" required></div>
+      <div><label>Case No</label><input type="text" id="caseNo" required></div>
+    </div>
+    <div class="field-row">
+      <div><label>Phone Number</label><input type="tel" id="phone" placeholder="e.g. 9876543210 or +919876543210"></div>
+      <div><label>Name</label><input type="text" id="name" required></div>
+    </div>
+    <div class="field-row">
+      <div><label>Age</label><input type="number" id="age"></div>
+      <div><label>Gender</label><select id="gender"><option value=""></option><option>Male</option><option>Female</option><option>Other</option></select></div>
+    </div>
+    <label>Occupation</label><input id="occupation" type="text">
+
+    <h2>2. Patient Symptoms</h2>
+    <label>Chief Complaints</label><textarea id="chief" rows="4"></textarea>
+
+    <table class="table">
+      <thead><tr><th>PATIENT LANGUAGE / PHYSICIAN OBSERVATION</th><th>CHIEF COMPLAINTS</th><th>DIAGNOSIS / PATHOLOGY</th><th>LSMC</th></tr></thead>
+      <tbody><tr><td><textarea id="lang_obs" rows="3"></textarea></td><td><textarea id="chief2" rows="3"></textarea></td><td><textarea id="diagnosis" rows="3"></textarea></td><td><textarea id="lsmc" rows="3"></textarea></td></tr></tbody>
+    </table>
+
+    <table class="table">
+      <thead><tr><th>MIASM / SYPHILIS / PSORIC</th><th>MIND & DISPOSITION</th><th>HISTORIES / AF FACTORS</th><th>SENSATION / SUPERCLASS / ROW/COL</th></tr></thead>
+      <tbody><tr><td><textarea id="miasm" rows="3"></textarea></td><td><textarea id="mind" rows="3"></textarea></td><td><textarea id="histories" rows="3"></textarea></td><td><textarea id="sensation" rows="3"></textarea></td></tr></tbody>
+    </table>
+
+    <h2>3. Physicals & Prescription</h2>
+    <label>Physical Generals</label><textarea id="physical" rows="3"></textarea>
+    <label>Lab Investigation + Examination (notes)</label><textarea id="invest_notes" rows="2"></textarea>
+    <label>Attach Investigation Files (optional)</label><input type="file" id="invest_files" multiple accept="image/*,application/pdf">
+    <label>Totality</label><textarea id="totality" rows="2"></textarea>
+    <label>Repertorial / Non-Repertorial (notes)</label><textarea id="repertorial_notes" rows="2"></textarea>
+    <label>Attach Repertorial Files (optional)</label><input type="file" id="repertorial_files" multiple accept="image/*,application/pdf">
+
+    <h3>Prescription</h3>
+    <table class="table" id="presTable">
+      <thead><tr><th>Medicine Name</th><th>Form & ML</th><th>Prescribed Time</th></tr></thead>
+      <tbody>
+        <tr><td><input class="pres-name"></td><td><input class="pres-form"></td><td><input class="pres-time"></td></tr>
+        <tr><td><input class="pres-name"></td><td><input class="pres-form"></td><td><input class="pres-time"></td></tr>
+        <tr><td><input class="pres-name"></td><td><input class="pres-form"></td><td><input class="pres-time"></td></tr>
+      </tbody>
+    </table>
+    <div class="toolbar"><button type="button" id="addPres" class="green">Add Prescription Row</button></div>
+
+    <div class="field-row">
+      <div><label>Next Follow-up Date</label><input type="date" id="followup_date"></div>
+      <div><label>Fee (₹)</label><input type="number" id="fee"></div>
+    </div>
+
+    <div class="toolbar" style="margin-top:12px">
+      <button type="button" id="saveBtn" class="green">💾 Save Patient</button>
+      <button type="button" id="waReg" class="gray">📱 Send Registration WhatsApp</button>
+      <button type="button" id="exportPDF" class="gray">📄 Export PDF</button>
+    </div>
+  </form>
+  <p class="footer-note small">Data saved locally in your browser (localStorage). Use View page to edit/delete and to add follow-ups.</p>
+</main>
+
+<script>
+const DB_KEY='jn_patients_v3';
+function loadDB(){ try{ return JSON.parse(localStorage.getItem(DB_KEY))||[]; } catch(e){ return []; } }
+function saveDB(arr){ localStorage.setItem(DB_KEY, JSON.stringify(arr)); }
+function ensureCountryPrefix(phone){ if(!phone) return ''; let p = phone.toString().replace(/\D/g,''); if(p.length===10) p='91'+p; return p; }
+
+function collectForm(){
+  const p={};
+  p.date = document.getElementById('date').value || '';
+  p.caseNo = document.getElementById('caseNo').value || ('C'+Date.now());
+  p.phone = document.getElementById('phone').value || '';
+  p.name = document.getElementById('name').value || '';
+  p.age = document.getElementById('age').value || '';
+  p.gender = document.getElementById('gender').value || '';
+  p.occupation = document.getElementById('occupation').value || '';
+  p.chief = document.getElementById('chief').value || '';
+  p.lang_obs = document.getElementById('lang_obs').value || '';
+  p.chief2 = document.getElementById('chief2').value || '';
+  p.diagnosis = document.getElementById('diagnosis').value || '';
+  p.lsmc = document.getElementById('lsmc').value || '';
+  p.miasm = document.getElementById('miasm').value || '';
+  p.mind = document.getElementById('mind').value || '';
+  p.histories = document.getElementById('histories').value || '';
+  p.sensation = document.getElementById('sensation').value || '';
+  p.physical = document.getElementById('physical').value || '';
+  p.invest_notes = document.getElementById('invest_notes').value || '';
+  p.totality = document.getElementById('totality').value || '';
+  p.repertorial_notes = document.getElementById('repertorial_notes').value || '';
+  p.followup_date = document.getElementById('followup_date').value || '';
+  p.fee = parseFloat(document.getElementById('fee').value || 0);
+  p.prescriptions = [];
+  document.querySelectorAll('#presTable tbody tr').forEach(tr=>{
+    const name = tr.querySelector('.pres-name').value || '';
+    const form = tr.querySelector('.pres-form').value || '';
+    const time = tr.querySelector('.pres-time').value || '';
+    if(name||form||time) p.prescriptions.push({name,form,time});
+  });
+  p.invest_files = Array.from(document.getElementById('invest_files').files).map(f=>f.name);
+  p.repertorial_files = Array.from(document.getElementById('repertorial_files').files).map(f=>f.name);
+  const db=loadDB(); const existing=db.find(x=>x.caseNo==p.caseNo);
+  p.followups = existing && existing.followups ? existing.followups : [];
+  return p;
+}
+
+document.getElementById('addPres').addEventListener('click', ()=>{
+  const tbody=document.querySelector('#presTable tbody'); const tr=document.createElement('tr');
+  tr.innerHTML = '<td><input class="pres-name"></td><td><input class="pres-form"></td><td><input class="pres-time"></td>'; tbody.appendChild(tr);
+});
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  const p = collectForm(); const db = loadDB(); const idx = db.findIndex(x=>x.caseNo==p.caseNo);
+  if(idx>=0) db[idx] = p; else db.push(p); saveDB(db); alert('✅ Patient saved successfully.'); window.location.href='view_edit_delete.html';
+});
+
+document.getElementById('waReg').addEventListener('click', ()=>{
+  const name=document.getElementById('name').value||'Patient'; let phone=document.getElementById('phone').value||''; phone=ensureCountryPrefix(phone); if(!phone){alert('Please enter phone number');return;} const msg='Hello '+name+', this is a registration message from J N Homeopathy Clinic. Thank you.'; window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
+});
+
+document.getElementById('exportPDF').addEventListener('click', ()=>{
+  const p = collectForm(); const w=window.open('','_blank'); let html='<html><head><title>Case '+p.caseNo+'</title><style>body{font-family:Arial;padding:20px}h1{font-size:18px}</style></head><body>';
+  html += '<h1>J N Homeopathy Clinic — Case '+p.caseNo+'</h1>'; html += '<p><strong>Name:</strong> '+(p.name||'')+' | <strong>Phone:</strong> '+(p.phone||'')+' | <strong>Date:</strong> '+(p.date||'')+'</p>';
+  html += '<h3>Preliminary</h3><p>Age: '+(p.age||'')+' | Gender: '+(p.gender||'')+' | Occupation: '+(p.occupation||'')+'</p>';
+  html += '<h3>Chief Complaints</h3><p>'+(p.chief||'')+'</p>'; html += '<h3>Details</h3><p>'+ (p.diagnosis||'') +'</p>'; html += '<h3>Prescription</h3><ul>'; (p.prescriptions||[]).forEach(r=>{ html += '<li>'+(r.name||'')+' — '+(r.form||'')+' — '+(r.time||'')+'</li>'; }); html += '</ul>';
+  html += '<h3>Follow-ups</h3><ul>'; (p.followups||[]).forEach(f=>{ html += '<li>'+(f.date||'')+' — Fee: '+(f.fee||'')+' — '+(f.notes||'')+'</li>'; }); html += '</ul>'; html += '</body></html>'; w.document.write(html); w.document.close(); w.print();
+});
+
+function loadForEditFromQuery(){ const params=new URLSearchParams(window.location.search); const editCase=params.get('edit'); if(editCase){ const db=loadDB(); const p=db.find(x=>x.caseNo==editCase); if(!p) return; document.getElementById('date').value=p.date||''; document.getElementById('caseNo').value=p.caseNo||''; document.getElementById('phone').value=p.phone||''; document.getElementById('name').value=p.name||''; document.getElementById('age').value=p.age||''; document.getElementById('gender').value=p.gender||''; document.getElementById('occupation').value=p.occupation||''; document.getElementById('chief').value=p.chief||''; document.getElementById('lang_obs').value=p.lang_obs||''; document.getElementById('chief2').value=p.chief2||''; document.getElementById('diagnosis').value=p.diagnosis||''; document.getElementById('lsmc').value=p.lsmc||''; document.getElementById('miasm').value=p.miasm||''; document.getElementById('mind').value=p.mind||''; document.getElementById('histories').value=p.histories||''; document.getElementById('sensation').value=p.sensation||''; document.getElementById('physical').value=p.physical||''; document.getElementById('invest_notes').value=p.invest_notes||''; document.getElementById('totality').value=p.totality||''; document.getElementById('repertorial_notes').value=p.repertorial_notes||''; document.getElementById('followup_date').value=p.followup_date||''; document.getElementById('fee').value=p.fee||''; const tbody=document.querySelector('#presTable tbody'); tbody.innerHTML=''; (p.prescriptions||[]).forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML='<td><input class="pres-name" value="'+(r.name||'')+'"></td><td><input class="pres-form" value="'+(r.form||'')+'"></td><td><input class="pres-time" value="'+(r.time||'')+'"></td>'; tbody.appendChild(tr); }); while(tbody.children.length<3){ const tr=document.createElement('tr'); tr.innerHTML='<td><input class="pres-name"></td><td><input class="pres-form"></td><td><input class="pres-time"></td>'; tbody.appendChild(tr); } } }
+
+window.addEventListener('DOMContentLoaded', ()=>{ const d=new Date(); document.getElementById('date').valueAsDate = d; loadForEditFromQuery(); });
+</script>
+</body></html>

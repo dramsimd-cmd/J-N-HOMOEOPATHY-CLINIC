@@ -1,0 +1,28 @@
+
+<!doctype html><html lang="en"><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>Add Follow-up</title><link rel="stylesheet" href="style.css"></head><body>
+<header><h1>J N HOMEOPATHY CLINIC — Add Follow-up</h1></header>
+<main class="container">
+  <a class="link" href="index.html">⬅ Back to Menu</a>
+  <div style="margin-top:12px">
+    <input id="search" placeholder="Search by Case No, Name or Phone"> <button id="btnFind" class="green">Find</button>
+  </div>
+  <div id="foundArea" style="margin-top:12px"></div>
+</main>
+<script>
+const DB_KEY='jn_patients_v3';
+function loadDB(){ try{ return JSON.parse(localStorage.getItem(DB_KEY))||[];}catch(e){return []} }
+function saveDB(arr){ localStorage.setItem(DB_KEY,JSON.stringify(arr)); }
+document.getElementById('btnFind').addEventListener('click', ()=>{
+  const q=document.getElementById('search').value.toLowerCase();
+  const db=loadDB();
+  const p=db.find(x=> (x.caseNo||'').toString().toLowerCase()===q || (x.name||'').toLowerCase().includes(q) || (x.phone||'').toLowerCase().includes(q));
+  const area=document.getElementById('foundArea'); area.innerHTML='';
+  if(!p) { area.innerHTML='<p class="small">No patient found</p>'; return; }
+  area.innerHTML=`<h3>Found: ${p.caseNo} — ${p.name}</h3><div><label>Follow-up Date</label><input type="date" id="fDate" value="${new Date().toISOString().slice(0,10)}"><label>Fee</label><input type="number" id="fFee"><label>Notes</label><textarea id="fNotes"></textarea><div class="toolbar"><button class="green" id="saveFU">Save Follow-up</button></div></div><h4>Existing Follow-ups</h4><div id="fuList"></div>`;
+  const fuList=document.getElementById('fuList'); fuList.innerHTML=''; (p.followups||[]).forEach((f,i)=>{ fuList.innerHTML += '<div class="small">#'+(i+1)+': '+(f.date||'')+' — Fee: '+(f.fee||'')+' — '+(f.notes||'')+'</div>'; });
+  document.getElementById('saveFU').addEventListener('click', ()=>{
+    const db2=loadDB(); const idx=db2.findIndex(x=>x.caseNo==p.caseNo); if(idx<0) return alert('Error'); const fu={date:document.getElementById('fDate').value, fee:parseFloat(document.getElementById('fFee').value||0), notes:document.getElementById('fNotes').value}; db2[idx].followups=db2[idx].followups||[]; db2[idx].followups.push(fu); // update next followup date field on patient
+    db2[idx].followup_date = fu.date; saveDB(db2); alert('Follow-up added'); document.getElementById('fFee').value=''; document.getElementById('fNotes').value=''; fuList.innerHTML=''; (db2[idx].followups||[]).forEach((f,i)=>{ fuList.innerHTML += '<div class="small">#'+(i+1)+': '+(f.date||'')+' — Fee: '+(f.fee||'')+' — '+(f.notes||'')+'</div>'; });
+  });
+});
+</script></body></html>

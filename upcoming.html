@@ -1,0 +1,37 @@
+
+<!doctype html><html lang="en"><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>Upcoming Follow-ups</title><link rel="stylesheet" href="style.css"></head><body>
+<header><h1>J N HOMEOPATHY CLINIC — Upcoming Follow-ups</h1></header>
+<main class="container">
+  <a class="link" href="index.html">⬅ Back to Menu</a>
+  <div style="margin-top:12px">
+    <label>Show follow-ups due in next (days):</label>
+    <select id="days"><option>1</option><option selected>3</option><option>7</option><option>30</option></select>
+    <button id="run" class="green">Show</button>
+  </div>
+  <div id="upcomingArea" style="margin-top:12px"></div>
+</main>
+<script>
+const DB_KEY='jn_patients_v3';
+function loadDB(){ try{return JSON.parse(localStorage.getItem(DB_KEY))||[];}catch(e){return []} }
+function runUpcoming(){
+  const days = parseInt(document.getElementById('days').value || '3',10);
+  const today = new Date(); const end = new Date(); end.setDate(today.getDate()+days);
+  const from = today.toISOString().slice(0,10); const to = end.toISOString().slice(0,10);
+  const arr = loadDB(); const rows = [];
+  arr.forEach(p=>{
+    if(p.followup_date && p.followup_date >= from && p.followup_date <= to) rows.push({caseNo:p.caseNo,name:p.name,date:p.followup_date,phone:p.phone});
+    (p.followups||[]).forEach(f=>{ if(f.date && f.date >= from && f.date <= to) rows.push({caseNo:p.caseNo,name:p.name,date:f.date,phone:p.phone}); });
+  });
+  rows.sort((a,b)=>a.date.localeCompare(b.date));
+  const area=document.getElementById('upcomingArea'); if(rows.length===0){ area.innerHTML='<p class="small">No follow-ups in this range.</p>'; return; }
+  let html='<table class="table"><thead><tr><th>Date</th><th>Case No</th><th>Name</th><th>Phone</th><th>Actions</th></tr></thead><tbody>';
+  rows.forEach(r=>{ html+='<tr><td>'+r.date+'</td><td>'+r.caseNo+'</td><td>'+r.name+'</td><td>'+r.phone+'</td><td><button class="gray" onclick="sendReminder(\''+r.caseNo+'\')">Send Reminder</button> <button class="green" onclick="openCase(\''+r.caseNo+'\')">Open</button></td></tr>'; });
+  html+='</tbody></table>'; area.innerHTML=html;
+}
+function sendReminder(caseNo){
+  const db=loadDB(); const p=db.find(x=>x.caseNo==caseNo); if(!p) return alert('Not found'); let phone=(p.phone||'').toString().replace(/\D/g,''); if(phone.length===10) phone='91'+phone; if(!phone) return alert('No phone'); const msg='Hello '+(p.name||'')+', this is a reminder from J N Homoeopathy Clinic regarding your follow-up. Kindly review your follow-up.'; window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
+}
+function openCase(caseNo){ location.href='add_patient.html?edit='+encodeURIComponent(caseNo); }
+document.getElementById('run').addEventListener('click', runUpcoming);
+window.addEventListener('DOMContentLoaded', runUpcoming);
+</script></body></html>
