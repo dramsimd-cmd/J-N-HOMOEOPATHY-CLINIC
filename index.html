@@ -1,20 +1,47 @@
 
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>J N Homeopathy Clinic - Main Menu</title>
-<link rel="stylesheet" href="style.css"></head>
-<body>
-<header><h1>J N HOMEOPATHY CLINIC</h1></header>
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>J N Homeopathy Clinic</title><link rel="stylesheet" href="style.css"></head><body>
+<header><div style="display:flex;align-items:center;gap:12px;justify-content:center"><div class="logo">J N HOMEOPATHY CLINIC</div></div></header>
 <main class="container">
   <div class="menu">
     <a class="btn add" href="add_patient.html">➕ Add Patient</a>
     <a class="btn view" href="view_edit_delete.html">📋 View / Edit / Delete Patient</a>
-    <a class="btn follow" href="followup.html">🔁 Add Follow-up</a>
+    <a class="btn follow" href="followup.html">🔁 Add / Edit Follow-up</a>
     <a class="btn income" href="monthly_income.html">💰 Monthly Income</a>
     <a class="btn upcoming" href="upcoming.html">📅 Upcoming Follow-ups</a>
+    <a class="btn backup" href="#" id="backupBtn">🔄 Backup to Excel (.xlsx)</a>
   </div>
-  <p class="note">Local app — data stored in your browser. Export/Import and PDF/CSV available.</p>
+  <p class="note">Data stored locally in your browser (IndexedDB). Use Backup to create an Excel file of all records.</p>
 </main>
-<footer class="footer-note">© J N Homeopathy Clinic</footer>
-</body>
-</html>
+<footer class="footer-note">© J N Homeopathy Clinic — Mylapore • Contact: 9150854083</footer>
+<script src="db.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script>
+document.getElementById('backupBtn').addEventListener('click', async ()=>{
+  const all = await getAllPatients();
+  if(!all.length) return alert('No records to backup');
+  const rows = all.map(p=>{
+    const followupStr = (p.followups||[]).map(f=> `${f.date}|Fee:${f.fee}|${(f.notes||'')}`).join(' || ');
+    return {
+      caseNo: p.caseNo||'',
+      date: p.date||'',
+      name: p.name||'',
+      age: p.age||'',
+      gender: p.gender||'',
+      phone: p.phone||'',
+      address: p.address||'',
+      occupation: p.occupation||'',
+      diagnosis: p.diagnosis||'',
+      prescriptions: (p.prescriptions||[]).map(x=> x.name + ' - ' + x.form + ' - ' + x.time).join(' | '),
+      followups: followupStr,
+      nextFollowup: p.followup_date||'',
+      fee: p.fee||0
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Patients');
+  const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  const blob = new Blob([wbout], {type:'application/octet-stream'});
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'JNClinic_backup.xlsx'; a.click(); URL.revokeObjectURL(url);
+});
+</script>
+</body></html>

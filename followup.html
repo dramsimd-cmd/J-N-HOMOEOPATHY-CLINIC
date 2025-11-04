@@ -1,6 +1,6 @@
 
 <!doctype html><html lang="en"><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>Add Follow-up</title><link rel="stylesheet" href="style.css"></head><body>
-<header><h1>J N HOMEOPATHY CLINIC — Add Follow-up</h1></header>
+<header><h1>J N HOMEOPATHY CLINIC — Add / Edit Follow-up</h1></header>
 <main class="container">
   <a class="link" href="index.html">⬅ Back to Menu</a>
   <div style="margin-top:12px">
@@ -8,21 +8,38 @@
   </div>
   <div id="foundArea" style="margin-top:12px"></div>
 </main>
+<script src="db.js"></script>
 <script>
-const DB_KEY='jn_patients_v3';
-function loadDB(){ try{ return JSON.parse(localStorage.getItem(DB_KEY))||[];}catch(e){return []} }
-function saveDB(arr){ localStorage.setItem(DB_KEY,JSON.stringify(arr)); }
-document.getElementById('btnFind').addEventListener('click', ()=>{
-  const q=document.getElementById('search').value.toLowerCase();
-  const db=loadDB();
-  const p=db.find(x=> (x.caseNo||'').toString().toLowerCase()===q || (x.name||'').toLowerCase().includes(q) || (x.phone||'').toLowerCase().includes(q));
-  const area=document.getElementById('foundArea'); area.innerHTML='';
-  if(!p) { area.innerHTML='<p class="small">No patient found</p>'; return; }
-  area.innerHTML=`<h3>Found: ${p.caseNo} — ${p.name}</h3><div><label>Follow-up Date</label><input type="date" id="fDate" value="${new Date().toISOString().slice(0,10)}"><label>Fee</label><input type="number" id="fFee"><label>Notes</label><textarea id="fNotes"></textarea><div class="toolbar"><button class="green" id="saveFU">Save Follow-up</button></div></div><h4>Existing Follow-ups</h4><div id="fuList"></div>`;
-  const fuList=document.getElementById('fuList'); fuList.innerHTML=''; (p.followups||[]).forEach((f,i)=>{ fuList.innerHTML += '<div class="small">#'+(i+1)+': '+(f.date||'')+' — Fee: '+(f.fee||'')+' — '+(f.notes||'')+'</div>'; });
-  document.getElementById('saveFU').addEventListener('click', ()=>{
-    const db2=loadDB(); const idx=db2.findIndex(x=>x.caseNo==p.caseNo); if(idx<0) return alert('Error'); const fu={date:document.getElementById('fDate').value, fee:parseFloat(document.getElementById('fFee').value||0), notes:document.getElementById('fNotes').value}; db2[idx].followups=db2[idx].followups||[]; db2[idx].followups.push(fu); // update next followup date field on patient
-    db2[idx].followup_date = fu.date; saveDB(db2); alert('Follow-up added'); document.getElementById('fFee').value=''; document.getElementById('fNotes').value=''; fuList.innerHTML=''; (db2[idx].followups||[]).forEach((f,i)=>{ fuList.innerHTML += '<div class="small">#'+(i+1)+': '+(f.date||'')+' — Fee: '+(f.fee||'')+' — '+(f.notes||'')+'</div>'; });
+document.getElementById('btnFind').addEventListener('click', async ()=>{
+  const q = document.getElementById('search').value.toLowerCase();
+  const all = await getAllPatients();
+  const p = all.find(x=> (x.caseNo||'').toString().toLowerCase()===q || (x.name||'').toLowerCase().includes(q) || (x.phone||'').toLowerCase().includes(q));
+  const area = document.getElementById('foundArea'); area.innerHTML='';
+  if(!p){ area.innerHTML='<p class="small">No patient found</p>'; return; }
+  area.innerHTML = `<h3>Found: ${p.caseNo} — ${p.name}</h3><div><label>Follow-up Date</label><input type="date" id="fDate" value="${new Date().toISOString().slice(0,10)}"><label>Fee</label><input type="number" id="fFee"><label>Notes</label><textarea id="fNotes"></textarea><div class="toolbar"><button class="green" id="saveFU">Save Follow-up</button></div></div><h4>Existing Follow-ups</h4><div id="fuList"></div>`;
+  const fuList = document.getElementById('fuList'); fuList.innerHTML=''; (p.followups||[]).forEach((f,i)=> fuList.innerHTML += '<div class="small">#'+(i+1)+': '+(f.date||'')+' — Fee: '+(f.fee||'')+' — '+(f.notes||'')+' <button onclick="editFU(\''+p.caseNo+'\','+i+')">Edit</button> <button onclick="printFU(\''+p.caseNo+'\','+i+')">Print</button></div>');
+  document.getElementById('saveFU').addEventListener('click', async ()=>{
+    const dbAll = await getAllPatients(); const idx = dbAll.findIndex(x=>x.caseNo==p.caseNo); if(idx<0) return alert('Error');
+    const fu = { date: document.getElementById('fDate').value, fee: parseFloat(document.getElementById('fFee').value||0), notes: document.getElementById('fNotes').value };
+    dbAll[idx].followups = dbAll[idx].followups || []; dbAll[idx].followups.push(fu); dbAll[idx].followup_date = fu.date;
+    await addOrUpdatePatient(dbAll[idx]);
+    alert('Follow-up added'); document.getElementById('fFee').value=''; document.getElementById('fNotes').value=''; const updated = (await getPatient(p.caseNo)).followups || []; fuList.innerHTML=''; updated.forEach((f,i)=> fuList.innerHTML += '<div class="small">#'+(i+1)+': '+(f.date||'')+' — Fee: '+(f.fee||'')+' — '+(f.notes||'')+' <button onclick="editFU(\''+p.caseNo+'\','+i+')">Edit</button> <button onclick="printFU(\''+p.caseNo+'\','+i+')">Print</button></div>');
   });
 });
-</script></body></html>
+
+function editFU(caseNo, idx){
+  getPatient(caseNo).then(async p=>{
+    const fu = p.followups[idx];
+    const newDate = prompt('Edit follow-up date (YYYY-MM-DD)', fu.date||''); if(newDate===null) return;
+    const newFee = prompt('Edit follow-up fee', fu.fee||0); if(newFee===null) return;
+    const newNotes = prompt('Edit follow-up notes', fu.notes||''); if(newNotes===null) return;
+    p.followups[idx] = {date:newDate, fee:parseFloat(newFee||0), notes:newNotes};
+    await addOrUpdatePatient(p);
+    alert('Follow-up updated');
+    document.getElementById('btnFind').click();
+  });
+}
+
+function printFU(caseNo, idx){ getPatient(caseNo).then(p=>{ const fu = (p.followups||[])[idx]; if(!fu) return alert('Not found'); const w = window.open('','_blank'); let html = '<html><head><title>Followup</title><style>body{font-family:Arial;padding:20px} .header{font-weight:700;font-size:18px}</style></head><body>'; html += '<div class="header">J N Homoeopathy Clinic - Mylapore | Contact: 9150854083</div><hr/>'; html += '<h3>Follow-up Prescription</h3>'; html += '<p><strong>Name:</strong> '+(p.name||'')+' | <strong>Age:</strong> '+(p.age||'')+' | <strong>Phone:</strong> '+(p.phone||'')+'</p>'; html += '<p><strong>Date:</strong> '+(fu.date||'')+' | <strong>Fee:</strong> ₹'+(fu.fee||0)+'</p>'; html += '<p>'+(fu.notes||'')+'</p>'; html += '<div style="margin-top:18px">Computer generated prescription. Thank you.</div>'; html += '</body></html>'; w.document.write(html); w.document.close(); w.print(); }); }
+</script>
+</body></html>

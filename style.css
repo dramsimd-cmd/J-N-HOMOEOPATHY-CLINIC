@@ -12,6 +12,7 @@ h1{margin:0;font-size:20px;letter-spacing:1px}
 .btn.follow{background:#6b2d8a}
 .btn.income{background:#1f8a44}
 .btn.upcoming{background:#d97706}
+.btn.backup{background:#b45309}
 .note{margin-top:18px;color:var(--muted);text-align:center}
 form{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.04);}
 label{display:block;margin-top:10px;font-weight:700;color:#123}
@@ -19,11 +20,11 @@ input,textarea,select{width:100%;padding:8px;border-radius:8px;border:1px solid 
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .small{font-size:13px;color:var(--muted)}
 .table{width:100%;border-collapse:collapse;margin-top:8px}
-.table th,.table td{border:1px solid #e6eef8;padding:8px;text-align:left}
+.table th,.table td{border:1px solid #e6eef8;padding:8px;text-align:left;vertical-align:top}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.actions button{padding:6px 10px;border-radius:8px;border:none;cursor:pointer}
 .green{background:#10b981;color:white;padding:8px 10px;border-radius:8px;border:none}
 .red{background:#ef4444;color:white;padding:8px 10px;border-radius:8px;border:none}
 .gray{background:#94a3b8;color:white;padding:8px 10px;border-radius:8px;border:none}
 .footer-note{font-size:13px;color:#6b7280;margin-top:16px;text-align:center}
 .link {color:#0b63a4;text-decoration:none}
+.logo{font-weight:800;letter-spacing:1px}

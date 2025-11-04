@@ -1,28 +1,79 @@
 
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>View / Edit / Delete Patients</title><link rel="stylesheet" href="style.css"></head><body>
+<!doctype html><html lang="en"><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>View Patients</title><link rel="stylesheet" href="style.css"></head><body>
 <header><h1>J N HOMEOPATHY CLINIC — View / Edit / Delete</h1></header>
 <main class="container">
   <a class="link" href="index.html">⬅ Back to Menu</a>
   <div style="margin-top:12px">
-    <input id="search" placeholder="Search by Case No, Name or Phone"> <button id="btnSearch" class="green">Search</button> <button id="btnAll" class="gray">Show All</button> <button id="btnExportAll" class="gray">Export CSV</button>
+    <input id="search" placeholder="Search by Case No, Name or Phone"> <button id="btnSearch" class="green">Search</button> <button id="btnAll" class="gray">Show All</button> <button id="btnExport" class="gray">Export CSV</button>
   </div>
   <table class="table" id="listTable" style="margin-top:12px">
     <thead><tr><th>Date</th><th>Name</th><th>Age</th><th>Diagnosis</th><th>Prescription</th><th>Next Follow-up</th><th>Actions</th></tr></thead><tbody></tbody>
   </table>
 </main>
+<script src="db.js"></script>
 <script>
-const DB_KEY='jn_patients_v3';
-function loadDB(){ try{ return JSON.parse(localStorage.getItem(DB_KEY))||[]; }catch(e){ return []; } }
-function saveDB(arr){ localStorage.setItem(DB_KEY, JSON.stringify(arr)); }
-function summarizePrescription(pres){ if(!pres||!pres.length) return ''; return pres.map(x=>x.name).filter(Boolean).slice(0,2).join(', ')+(pres.length>2? '...' : ''); }
-function nextFollowupDate(p){ if(!p.followups||!p.followups.length) return p.followup_date||''; const today = new Date().toISOString().slice(0,10); const future = p.followups.map(f=>f.date).filter(d=>d && d>=today).sort(); if(future.length) return future[0]; return p.followups.slice(-1)[0]?.date || p.followup_date || ''; }
-function renderList(filter){ const tbody=document.querySelector('#listTable tbody'); tbody.innerHTML=''; const arr = loadDB().filter(p=>{ if(!filter) return true; const f=filter.toLowerCase(); return (p.caseNo||'').toString().toLowerCase().includes(f) || (p.name||'').toLowerCase().includes(f) || (p.phone||'').toLowerCase().includes(f) || (p.diagnosis||'').toLowerCase().includes(f); }); arr.forEach(p=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${p.date||''}</td><td>${p.name||''}</td><td>${p.age||''}</td><td>${(p.diagnosis||'').slice(0,60)}</td><td>${summarizePrescription(p.prescriptions)}</td><td>${nextFollowupDate(p)||''}</td><td><button class='green' onclick="viewCase('${p.caseNo}')">View</button> <button class='green' onclick="editCase('${p.caseNo}')">Edit</button> <button class='red' onclick="deleteCase('${p.caseNo}')">Delete</button> <button class='gray' onclick="exportCase('${p.caseNo}')">PDF</button> <button class='gray' onclick="sendFollowReminder('${p.caseNo}')">Send Reminder</button></td>`; tbody.appendChild(tr); }); }
-document.getElementById('btnAll').addEventListener('click', ()=>renderList('')); document.getElementById('btnSearch').addEventListener('click', ()=>renderList(document.getElementById('search').value));
-document.getElementById('btnExportAll').addEventListener('click', ()=>{ const arr=loadDB(); if(!arr.length) return alert('No records'); const keys = ['caseNo','date','name','phone','age','diagnosis','fee']; const csv = [keys.join(',')].concat(arr.map(r=>keys.map(k=>`"${String(r[k]||'').replace(/"/g,'""')}"`).join(',')).join('\n')); const blob=new Blob([csv.join('\n')],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='patients_all.csv'; a.click(); URL.revokeObjectURL(url); });
-function viewCase(caseNo){ const arr=loadDB(); const p=arr.find(x=>x.caseNo==caseNo); if(!p) return alert('Not found'); const w=window.open('','_blank'); let html='<html><head><title>Case '+p.caseNo+'</title></head><body>'; html+='<h1>Case '+p.caseNo+' — '+(p.name||'')+'</h1>'; html+='<p><strong>Date:</strong> '+(p.date||'')+' | <strong>Phone:</strong> '+(p.phone||'')+'</p>'; html+='<h3>Preliminary</h3><p>Age: '+(p.age||'')+' | Gender: '+(p.gender||'')+' | Occupation: '+(p.occupation||'')+'</p>'; html+='<h3>Diagnosis</h3><p>'+(p.diagnosis||'')+'</p>'; html+='<h3>Prescription</h3><ul>'; (p.prescriptions||[]).forEach(r=>{ html+='<li>'+(r.name||'')+' — '+(r.form||'')+' — '+(r.time||'')+'</li>'; }); html+='</ul>'; html+='<h3>Follow-ups</h3><ul>'; (p.followups||[]).forEach(f=>{ html+='<li>'+ (f.date||'') +' — Fee: '+ (f.fee||'') +' — '+ (f.notes||'') +'</li>'; }); html+='</ul>'; html+='</body></html>'; w.document.write(html); w.document.close(); }
-function editCase(caseNo){ location.href='add_patient.html?edit='+encodeURIComponent(caseNo); }
-function deleteCase(caseNo){ if(!confirm('Delete this patient?')) return; let arr=loadDB(); arr=arr.filter(p=>p.caseNo!=caseNo); saveDB(arr); renderList(''); }
-function exportCase(caseNo){ const arr=loadDB(); const p=arr.find(x=>x.caseNo==caseNo); if(!p) return alert('Not found'); const w=window.open('','_blank'); let html='<html><head><title>Case '+p.caseNo+'</title></head><body>'; html+='<h1>Case '+p.caseNo+' — '+(p.name||'')+'</h1>'; html+='<p><strong>Date:</strong> '+(p.date||'')+' | <strong>Phone:</strong> '+(p.phone||'')+'</p>'; html+='<h3>Preliminary</h3><p>Age: '+(p.age||'')+' | Gender: '+(p.gender||'')+' | Occupation: '+(p.occupation||'')+'</p>'; html+='<h3>Diagnosis</h3><p>'+(p.diagnosis||'')+'</p>'; html+='<h3>Prescription</h3><ul>'; (p.prescriptions||[]).forEach(r=>{ html+='<li>'+(r.name||'')+' — '+(r.form||'')+' — '+(r.time||'')+'</li>'; }); html+='</ul>'; html+='<h3>Follow-ups</h3><ul>'; (p.followups||[]).forEach(f=>{ html+='<li>'+ (f.date||'') +' — Fee: '+ (f.fee||'') +' — '+ (f.notes||'') +'</li>'; }); html+='</ul>'; html+='</body></html>'; w.document.write(html); w.document.close(); w.print(); }
-function sendFollowReminder(caseNo){ const arr=loadDB(); const p=arr.find(x=>x.caseNo==caseNo); if(!p) return alert('Not found'); let phone=(p.phone||'').toString().replace(/\D/g,''); if(phone.length===10) phone='91'+phone; if(!phone) return alert('No phone number'); const msg='Hello '+(p.name||'')+', this is a reminder from J N Homoeopathy Clinic regarding your follow-up. Kindly review your follow-up.'; window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank'); }
+function summarizePrescription(p){ if(!p) return ''; return p.map(x=>x.name).filter(Boolean).slice(0,2).join(', ')+(p.length>2?'...':''); }
+function nextFollowup(p){ if(!p) return ''; if(p.followups && p.followups.length){ const today = new Date().toISOString().slice(0,10); const future = p.followups.map(f=>f.date).filter(d=>d && d>=today).sort(); if(future.length) return future[0]; return p.followups.slice(-1)[0]?.date || p.followup_date || ''; } return p.followup_date||''; }
+
+async function renderList(filter){
+  const tbody = document.querySelector('#listTable tbody'); tbody.innerHTML='';
+  const all = await getAllPatients();
+  const arr = all.filter(p=>{ if(!filter) return true; const f=filter.toLowerCase(); return (p.caseNo||'').toString().toLowerCase().includes(f) || (p.name||'').toLowerCase().includes(f) || (p.phone||'').toLowerCase().includes(f) || (p.diagnosis||'').toLowerCase().includes(f); });
+  arr.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  arr.forEach(p=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.date||''}</td><td>${p.name||''}</td><td>${p.age||''}</td><td>${(p.diagnosis||'').slice(0,60)}</td><td>${summarizePrescription(p.prescriptions)}</td><td>${nextFollowup(p)||''}</td><td><button class='green' onclick="viewCase('${p.caseNo}')">View</button> <button class='green' onclick="editCase('${p.caseNo}')">Edit</button> <button class='red' onclick="deleteCase('${p.caseNo}')">Delete</button> <button class='gray' onclick="printPatientPres('${p.caseNo}')">Print Pres</button> <button class='gray' onclick="sendReminder('${p.caseNo}')">Reminder</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById('btnAll').addEventListener('click', ()=>renderList(''));
+document.getElementById('btnSearch').addEventListener('click', ()=>renderList(document.getElementById('search').value));
+
+function editCase(caseNo){ location.href = 'add_patient.html?edit='+encodeURIComponent(caseNo); }
+async function deleteCase(caseNo){ if(!confirm('Delete patient?')) return; await deletePatient(caseNo); renderList(''); }
+async function viewCase(caseNo){
+  const p = await getPatient(caseNo);
+  if(!p) return alert('Not found');
+  const w = window.open('','_blank');
+  let html = '<html><head><title>Case '+p.caseNo+'</title></head><body>';
+  html += '<h1>Case '+p.caseNo+' — '+(p.name||'')+'</h1>';
+  html += '<p><strong>Date:</strong> '+(p.date||'')+' | <strong>Phone:</strong> '+(p.phone||'')+' | <strong>Address:</strong> '+(p.address||'')+'</p>';
+  html += '<h3>Preliminary</h3><p>Age: '+(p.age||'')+' | Gender: '+(p.gender||'')+' | Occupation: '+(p.occupation||'')+'</p>';
+  html += '<h3>Diagnosis</h3><p>'+(p.diagnosis||'')+'</p>';
+  html += '<h3>Prescription</h3><ul>'; (p.prescriptions||[]).forEach(r=>{ html += '<li>'+(r.name||'')+' — '+(r.form||'')+' — '+(r.time||'')+'</li>'; }); html += '</ul>';
+  html += '<h3>Follow-ups</h3><ul>'; (p.followups||[]).forEach((f,i)=>{ html += '<li>'+ (f.date||'') +' — Fee: '+ (f.fee||'') +' — '+ (f.notes||'') + ' <button onclick="editFollowup(\''+p.caseNo+'\','+i+')">Edit</button> <button onclick="printFollowup(\''+p.caseNo+'\','+i+')">Print</button></li>'; }); html += '</ul>';
+  html += '</body></html>'; w.document.write(html); w.document.close();
+}
+
+async function printPatientPres(caseNo){
+  const p = await getPatient(caseNo);
+  if(!p) return alert('Not found');
+  const w = window.open('','_blank');
+  let html = '<html><head><title>Prescription - '+(p.caseNo||'')+'</title><style>body{font-family:Arial;padding:20px} .header{font-weight:700;font-size:18px} table{width:100%;border-collapse:collapse} td,th{padding:6px;border:1px solid #ddd}</style></head><body>';
+  html += '<div class="header">J N Homoeopathy Clinic - Mylapore | Contact: 9150854083</div><hr/>';
+  html += '<h3>Patient Prescription</h3>';
+  html += '<p><strong>Name:</strong> '+(p.name||'')+' | <strong>Age:</strong> '+(p.age||'')+' | <strong>Gender:</strong> '+(p.gender||'')+' | <strong>Phone:</strong> '+(p.phone||'')+'</p>';
+  html += '<p><strong>Date:</strong> '+(p.date||'')+' | <strong>Fee:</strong> ₹'+(p.fee||0)+'</p>';
+  html += '<h4>Prescription</h4><table><thead><tr><th>Medicine</th><th>Form & ML</th><th>Time</th></tr></thead><tbody>';
+  (p.prescriptions||[]).forEach(r=> html += '<tr><td>'+(r.name||'')+'</td><td>'+(r.form||'')+'</td><td>'+(r.time||'')+'</td></tr>');
+  html += '</tbody></table>';
+  html += '<div style="margin-top:18px">Computer generated prescription. Thank you.</div>';
+  html += '</body></html>'; w.document.write(html); w.document.close(); w.print();
+}
+
+async function sendReminder(caseNo){ const p = await getPatient(caseNo); if(!p) return alert('Not found'); let phone=(p.phone||'').toString().replace(/\D/g,''); if(phone.length===10) phone='91'+phone; if(!phone) return alert('No phone'); const msg = 'Hello '+(p.name||'')+', this is a reminder from J N Homoeopathy Clinic regarding your follow-up. Kindly review your follow-up.'; window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank'); }
+
+function editFollowup(caseNo, idx){
+  const newDate = prompt('Edit follow-up date (YYYY-MM-DD)'); if(newDate===null) return;
+  const newFee = prompt('Edit follow-up fee'); if(newFee===null) return;
+  const newNotes = prompt('Edit follow-up notes'); if(newNotes===null) return;
+  getPatient(caseNo).then(async p=>{ if(!p) return alert('Not found'); p.followups = p.followups || []; p.followups[idx] = {date:newDate, fee:parseFloat(newFee||0), notes:newNotes}; await addOrUpdatePatient(p); alert('Updated'); renderList(''); });
+}
+
+function printFollowup(caseNo, idx){ getPatient(caseNo).then(p=>{ const fu = (p.followups||[])[idx]; if(!fu) return alert('Not found'); const w = window.open('','_blank'); let html = '<html><head><title>Followup</title><style>body{font-family:Arial;padding:20px} .header{font-weight:700;font-size:18px}</style></head><body>'; html += '<div class="header">J N Homoeopathy Clinic - Mylapore | Contact: 9150854083</div><hr/>'; html += '<h3>Follow-up Prescription</h3>'; html += '<p><strong>Name:</strong> '+(p.name||'')+' | <strong>Age:</strong> '+(p.age||'')+' | <strong>Phone:</strong> '+(p.phone||'')+'</p>'; html += '<p><strong>Date:</strong> '+(fu.date||'')+' | <strong>Fee:</strong> ₹'+(fu.fee||0)+'</p>'; html += '<p>'+(fu.notes||'')+'</p>'; html += '<div style="margin-top:18px">Computer generated prescription. Thank you.</div>'; html += '</body></html>'; w.document.write(html); w.document.close(); w.print(); }); }
+
+// initial
 renderList('');
-</script></body></html>
+</script>
+</body></html>
